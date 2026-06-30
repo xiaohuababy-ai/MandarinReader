@@ -382,15 +382,33 @@
             }
 
             // 重置索引，从第一个字符开始 (0)
-            currentCharIndex = 0;
+            //currentCharIndex = 0;
             // 跳过非中文字符，找到第一个中文
-            while (currentCharIndex < charsArray.length && !charsArray[currentCharIndex].isChinese) {
-                currentCharIndex++;
+            //while (currentCharIndex < charsArray.length && !charsArray[currentCharIndex].isChinese) {
+              //  currentCharIndex++;
+            //}
+
+            // 检查当前位置是否有效（指向一个中文字符）
+            const isValid = currentCharIndex < charsArray.length && 
+                            charsArray[currentCharIndex].isChinese;
+            
+            // 如果当前位置无效（比如已经读完，或者从未读过），则从头开始
+            if (!isValid) {
+                currentCharIndex = 0;
+                while (currentCharIndex < charsArray.length && !charsArray[currentCharIndex].isChinese) {
+                    currentCharIndex++;
+                }
             }
+            // 否则 currentCharIndex 保持不变，从断点继续
+
+
+
             if (currentCharIndex >= charsArray.length) {
                 statusText.textContent = '⚠️ No characters found';
                 return;
             }
+
+
 
             isSpeaking = true;
             speakBtn.textContent = '⏸ reading...';
@@ -440,7 +458,7 @@
             // 尝试匹配常见的中文女声关键词 (不区分大小写)
             const preferredVoice = voices.find(voice => 
                 voice.lang.startsWith('zh') && 
-                /female|Tingting/i.test(voice.name)
+                /female|Yu-shu/i.test(voice.name)
             );
             if (preferredVoice) {
                 utterance.voice = preferredVoice;
@@ -448,9 +466,13 @@
             // --- 新增结束 ---
 
 
-            utterance.rate = 1.3;      // 语速稍慢，清晰
-            utterance.pitch = 1.0;
-            utterance.volume = 1.2;
+            //utterance.rate = 1.2;      // 语速稍慢，清晰
+            //utterance.pitch = 1.3;
+            //utterance.volume = 1.0;
+
+            utterance.rate = 1.2;
+            utterance.pitch = 1.1;
+            utterance.volume = 0.8;
 
             // 当朗读结束时，自动播放下一个字
             utterance.onend = function() {
@@ -467,7 +489,7 @@
                     // 使用 setTimeout 避免连续语音重叠
                     speechTimer = setTimeout(() => {
                         speakCurrentChar();
-                    }, 30); // 间隔120ms
+                    }, 50); // 间隔120ms
                 } else if (currentCharIndex >= charsArray.length) {
                     finishSpeaking();
                 }
@@ -485,7 +507,7 @@
                 if (isSpeaking && currentCharIndex < charsArray.length) {
                     speechTimer = setTimeout(() => {
                         speakCurrentChar();
-                    }, 30);
+                    }, 50);// 间隔120ms
                 } else {
                     finishSpeaking();
                 }
@@ -504,13 +526,15 @@
             speakBtn.textContent = '▶ read';
             speakBtn.classList.remove('primary');
             speakBtn.classList.add('success');
-            statusText.textContent = '✅ reading stopped';
+            statusText.textContent = '✅ reading completed';
             clearHighlight();
             if (speechTimer) {
                 clearTimeout(speechTimer);
                 speechTimer = null;
             }
             utterance = null;
+            // 读完后重置索引，下次点击"朗读"从头开始
+            currentCharIndex = 0;
         }
 
         // --- 停止朗读 ---
@@ -527,8 +551,9 @@
                 speechTimer = null;
             }
             utterance = null;
-            clearHighlight();
-            statusText.textContent = '⏹ reading paused';
+            //clearHighlight();
+            //statusText.textContent = '⏹ reading paused';
+            statusText.textContent = `⏸ 已暂停 (${currentCharIndex + 1}/${charsArray.length})`;
         }
 
         // --- 清空内容 ---
