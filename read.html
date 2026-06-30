@@ -1,0 +1,611 @@
+
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>逐字拼音朗读器</title>
+    <style>
+        /* 整体页面样式 */
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #2c3e50;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #007bff;
+            margin-top: 0;
+        }
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 15px;
+            font-size: 18px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-family: inherit;
+            resize: vertical;
+        }
+        .button-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        button {
+            padding: 12px 28px;
+            font-size: 18px;
+            font-weight: 600;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background-color: #e9ecef;
+            color: #495057;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        button.primary {
+            background-color: #007bff;
+            color: white;
+        }
+        button.primary:hover {
+            background-color: #0056b3;
+        }
+        button.success {
+            background-color: #28a745;
+            color: white;
+        }
+        button.success:hover {
+            background-color: #1e7e34;
+        }
+        button.danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        button.danger:hover {
+            background-color: #c82333;
+        }
+        /* 显示拼音和汉字的主要区域 */
+        #displayArea {
+            margin-top: 30px;
+            padding: 20px;
+            min-height: 100px;
+            background-color: #f1f3f5;
+            border-radius: 12px;
+            font-size: 28px;
+            line-height: 2.2;
+            letter-spacing: 4px;
+            word-wrap: break-word;
+            border: 2px dashed #dee2e6;
+            transition: all 0.3s;
+        }
+        /* 每个汉字及其拼音的容器 - 行内块级 */
+        .char-container {
+            display: inline-block;
+            text-align: center;
+            margin: 0 2px;
+            padding: 5px 2px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            position: relative;
+        }
+        /* 拼音样式 - 位于汉字上方 */
+        .pinyin {
+            display: block;
+            font-size: 16px;
+            color: #e74c3c;
+            font-weight: 500;
+            height: 24px;
+            line-height: 24px;
+            margin-bottom: 2px;
+            letter-spacing: 1px;
+        }
+        /* 汉字样式 */
+        .char {
+            display: block;
+            font-size: 32px;
+            font-weight: 500;
+            color: #2c3e50;
+            line-height: 1.2;
+        }
+        /* 朗读高亮效果 */
+        .char-container.active {
+            background-color: #ffd700;
+            border-radius: 8px;
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+        }
+        .char-container.active .pinyin {
+            color: #c0392b;
+            font-weight: 700;
+        }
+        .char-container.active .char {
+            color: #000;
+            font-weight: 700;
+        }
+        /* 标点符号等非中文字符的样式 */
+        .char-container.non-chinese .pinyin {
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .char-container.non-chinese .char {
+            color: #6c757d;
+            font-size: 28px;
+        }
+        /* 控制栏 */
+        .control-bar {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin: 15px 0 5px;
+        }
+        .status {
+            font-size: 16px;
+            color: #6c757d;
+            margin-left: 10px;
+            font-weight: 500;
+        }
+        /* 示例文字按钮 */
+        .sample-text {
+            background: none;
+            border: none;
+            color: #007bff;
+            cursor: pointer;
+            text-decoration: underline;
+            padding: 0 5px;
+            font-size: 16px;
+        }
+        .sample-text:hover {
+            color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📖 Read Assistant</h1>
+    <p style="text-align:center; color:#6c757d; margin-bottom:25px;">type words, click the button to mark phone and read</p>
+
+    <textarea id="textInput" placeholder="请在此输入或粘贴中文文本……">春眠不觉晓，处处闻啼鸟。夜来风雨声，花落知多少。</textarea>
+
+    <div class="button-group">
+        <button class="primary" id="annotateBtn">🏷️ Mark Pinyin</button>
+        <button class="success" id="speakBtn">▶ Read</button>
+        <button class="danger" id="stopBtn">⏹ Stop</button>
+        <button id="clearBtn">🗑️ Reset</button>
+        <button class="sample-text" id="sampleBtn">📄 试试示例文章</button>
+    </div>
+
+    <!-- 显示区域 -->
+    <div id="displayArea">
+        <span style="color:#adb5bd; font-size:18px; letter-spacing:normal;">点击「标注拼音」查看效果</span>
+    </div>
+
+    <div class="control-bar">
+        <span id="statusText" class="status">就绪</span>
+    </div>
+</div>
+
+<script>
+    (function(){
+        "use strict";
+
+        // --- DOM 元素 ---
+        const textInput = document.getElementById('textInput');
+        const displayArea = document.getElementById('displayArea');
+        const statusText = document.getElementById('statusText');
+        const annotateBtn = document.getElementById('annotateBtn');
+        const speakBtn = document.getElementById('speakBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const sampleBtn = document.getElementById('sampleBtn');
+
+        // --- 状态变量 ---
+        let isSpeaking = false;          // 是否正在朗读
+        let currentCharIndex = 0;        // 当前朗读到的字符索引 (在 charsArray 中)
+        let charsArray = [];            // 存储当前显示的所有字符对象 { char, pinyin, isChinese }
+        let speechTimer = null;         // setTimeout 句柄
+        let utterance = null;           // 当前 SpeechSynthesisUtterance 对象
+
+               // --- 加载拼音库 (使用全球稳定的 cdnjs CDN) ---
+        function loadPinyinLibrary() {
+            return new Promise((resolve, reject) => {
+                // 如果已经加载过，直接返回
+                if (window.pinyinPro) {
+                    resolve(window.pinyinPro);
+                    return;
+                }
+
+                const script = document.createElement('script');
+                // 使用 cdnjs 的地址，全球访问都很快
+                script.src = 'https://cdn.jsdelivr.net/npm/pinyin-pro/dist/index.js';
+                script.integrity = 'sha512-...'; // 可省略，用于校验
+                script.crossOrigin = 'anonymous';
+                
+                let loaded = false;
+                const timeout = setTimeout(() => {
+                    if (!loaded) {
+                        reject(new Error('加载 pinyin-pro 超时 (10秒)'));
+                    }
+                }, 10000);
+
+                script.onload = () => {
+                    loaded = true;
+                    clearTimeout(timeout);
+                    if (window.pinyinPro) {
+                        resolve(window.pinyinPro);
+                    } else {
+                        reject(new Error('pinyin-pro 加载后未找到全局对象'));
+                    }
+                };
+                script.onerror = () => {
+                    clearTimeout(timeout);
+                    reject(new Error('无法加载 pinyin-pro 库，请检查网络'));
+                };
+                document.head.appendChild(script);
+            });
+        }
+
+        // --- 核心：标注拼音，生成字符数组 ---
+        async function annotateText(text) {
+            if (!text.trim()) {
+                displayArea.innerHTML = '<span style="color:#adb5bd; font-size:18px;">请输入要标注的文字</span>';
+                statusText.textContent = '请输入文字';
+                return [];
+            }
+
+            try {
+                statusText.textContent = '⏳ 正在加载拼音库...';
+                const pinyinPro = await loadPinyinLibrary();
+
+                // 逐字处理，保留非中文字符
+                const chars = [...text];
+                const result = [];
+
+                for (let ch of chars) {
+                    // 判断是否为中文字符 (基本汉字 Unicode 范围)
+                    const isChinese = /[\u4e00-\u9fa5]/.test(ch);
+                    let pinyin = '';
+                    if (isChinese) {
+                        // 使用 pinyin-pro 获取拼音 (带声调，不包含数字)
+                        try {
+                            pinyin = pinyinPro.pinyin(ch, { toneType: 'symbol' });
+                        } catch (e) {
+                            pinyin = '';
+                        }
+                    }
+                    result.push({
+                        char: ch,
+                        pinyin: pinyin,
+                        isChinese: isChinese
+                    });
+                }
+
+                // 渲染到页面
+                renderChars(result);
+                statusText.textContent = `✅ 标注完成，共 ${result.length} 个字符`;
+                return result;
+
+            } catch (error) {
+                console.error('标注失败:', error);
+                statusText.textContent = '❌ 标注失败: ' + error.message;
+                displayArea.innerHTML = `<span style="color:#dc3545;">⚠️ 拼音标注失败，请检查网络后重试。</span>`;
+                return [];
+            }
+        }
+
+        // --- 渲染字符和拼音到显示区域 ---
+        function renderChars(charsArrayData) {
+            charsArray = charsArrayData; // 保存到全局
+            if (!charsArray || charsArray.length === 0) {
+                displayArea.innerHTML = '<span style="color:#adb5bd; font-size:18px;">没有可显示的内容</span>';
+                return;
+            }
+
+            let html = '';
+            for (let i = 0; i < charsArray.length; i++) {
+                const item = charsArray[i];
+                const charClass = item.isChinese ? 'char-container' : 'char-container non-chinese';
+                // 拼音显示：如果是中文且拼音存在，显示拼音；否则显示 &nbsp; 占位保持对齐
+                const pinyinDisplay = (item.isChinese && item.pinyin) ? item.pinyin : '&nbsp;';
+                // 特殊处理：如果是空格，显示为 &nbsp;
+                const charDisplay = item.char === ' ' ? '&nbsp;' : item.char;
+
+                html += `<span class="${charClass}" data-index="${i}">
+                            <span class="pinyin">${pinyinDisplay}</span>
+                            <span class="char">${charDisplay}</span>
+                        </span>`;
+            }
+            displayArea.innerHTML = html;
+
+            // 清除所有高亮
+            clearHighlight();
+        }
+
+        // --- 清除高亮 ---
+        function clearHighlight() {
+            document.querySelectorAll('.char-container.active').forEach(el => {
+                el.classList.remove('active');
+            });
+        }
+
+        // --- 高亮特定索引的字符 ---
+        function highlightChar(index) {
+            clearHighlight();
+            if (index < 0) return;
+            const containers = document.querySelectorAll('.char-container');
+            if (index < containers.length) {
+                containers[index].classList.add('active');
+                // 滚动到可视区域 (如果不在视野内)
+                containers[index].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+        }
+
+        // --- 朗读功能 (逐字) ---
+        function startSpeaking() {
+            // 如果正在朗读，先停止
+            if (isSpeaking) {
+                stopSpeaking();
+            }
+
+            // 如果没有字符，或没有拼音标注 (检查第一个中文是否有拼音)
+            if (!charsArray || charsArray.length === 0) {
+                statusText.textContent = '⚠️ 请先点击「标注拼音」';
+                return;
+            }
+
+            // 检查是否有中文内容
+            const hasChinese = charsArray.some(item => item.isChinese);
+            if (!hasChinese) {
+                statusText.textContent = '⚠️ 当前文本中没有中文字符，无需朗读';
+                return;
+            }
+
+            // 检查浏览器是否支持语音合成
+            if (!window.speechSynthesis) {
+                statusText.textContent = '❌ 您的浏览器不支持语音合成，请使用 Chrome 或 Edge';
+                return;
+            }
+
+            // 重置索引，从第一个字符开始 (0)
+            currentCharIndex = 0;
+            // 跳过非中文字符，找到第一个中文
+            while (currentCharIndex < charsArray.length && !charsArray[currentCharIndex].isChinese) {
+                currentCharIndex++;
+            }
+            if (currentCharIndex >= charsArray.length) {
+                statusText.textContent = '⚠️ 没有找到可朗读的中文字符';
+                return;
+            }
+
+            isSpeaking = true;
+            speakBtn.textContent = '⏸ 朗读中...';
+            speakBtn.classList.remove('success');
+            speakBtn.classList.add('primary');
+            statusText.textContent = `🔊 正在朗读... (${currentCharIndex + 1}/${charsArray.length})`;
+
+            // 开始朗读第一个字
+            speakCurrentChar();
+        }
+
+        // --- 朗读当前索引的字符 ---
+        function speakCurrentChar() {
+            if (!isSpeaking) return;
+            if (currentCharIndex >= charsArray.length) {
+                // 朗读结束
+                finishSpeaking();
+                return;
+            }
+
+            const item = charsArray[currentCharIndex];
+            // 如果是非中文或空字符，直接跳到下一个
+            if (!item.isChinese || item.char.trim() === '') {
+                currentCharIndex++;
+                // 使用 requestAnimationFrame 避免阻塞
+                requestAnimationFrame(speakCurrentChar);
+                return;
+            }
+
+            // 高亮当前字符
+            highlightChar(currentCharIndex);
+
+            // 构建朗读文本：优先使用拼音，如果没有拼音则读汉字
+            let textToSpeak = item.char;
+            // 如果拼音是数字格式，转为更自然的读法 (简单处理)
+            if (textToSpeak && /^\d+$/.test(textToSpeak)) {
+                // 如果拼音是纯数字 (极少情况)，直接读汉字
+                textToSpeak = item.char;
+            }
+
+            // 创建语音合成对象
+            utterance = new SpeechSynthesisUtterance(textToSpeak);
+            utterance.lang = 'zh-CN';  // 中文
+
+              // --- 新增：自动选择温柔女声 ---
+            const voices = window.speechSynthesis.getVoices();
+            // 尝试匹配常见的中文女声关键词 (不区分大小写)
+            const preferredVoice = voices.find(voice => 
+                voice.lang.startsWith('zh') && 
+                /female|Tingting/i.test(voice.name)
+            );
+            if (preferredVoice) {
+                utterance.voice = preferredVoice;
+            }
+            // --- 新增结束 ---
+
+
+            utterance.rate = 1.3;      // 语速稍慢，清晰
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+
+            // 当朗读结束时，自动播放下一个字
+            utterance.onend = function() {
+                // 清除引用
+                utterance = null;
+                // 移动到下一个字符
+                currentCharIndex++;
+                // 跳过非中文字符
+                while (currentCharIndex < charsArray.length && !charsArray[currentCharIndex].isChinese) {
+                    currentCharIndex++;
+                }
+                // 如果还没结束，继续播放下一个
+                if (isSpeaking && currentCharIndex < charsArray.length) {
+                    // 使用 setTimeout 避免连续语音重叠
+                    speechTimer = setTimeout(() => {
+                        speakCurrentChar();
+                    }, 30); // 间隔120ms
+                } else if (currentCharIndex >= charsArray.length) {
+                    finishSpeaking();
+                }
+            };
+
+            // 如果发生错误，也继续下一个
+            utterance.onerror = function(event) {
+                console.warn('语音合成错误:', event);
+                utterance = null;
+                // 出错时跳到下一个
+                currentCharIndex++;
+                while (currentCharIndex < charsArray.length && !charsArray[currentCharIndex].isChinese) {
+                    currentCharIndex++;
+                }
+                if (isSpeaking && currentCharIndex < charsArray.length) {
+                    speechTimer = setTimeout(() => {
+                        speakCurrentChar();
+                    }, 30);
+                } else {
+                    finishSpeaking();
+                }
+            };
+
+            // 更新状态
+            statusText.textContent = `🔊 朗读中... (${currentCharIndex + 1}/${charsArray.length})`;
+
+            // 开始朗读
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // --- 完成朗读 ---
+        function finishSpeaking() {
+            isSpeaking = false;
+            speakBtn.textContent = '▶ 朗读';
+            speakBtn.classList.remove('primary');
+            speakBtn.classList.add('success');
+            statusText.textContent = '✅ 朗读完成';
+            clearHighlight();
+            if (speechTimer) {
+                clearTimeout(speechTimer);
+                speechTimer = null;
+            }
+            utterance = null;
+        }
+
+        // --- 停止朗读 ---
+        function stopSpeaking() {
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
+            isSpeaking = false;
+            speakBtn.textContent = '▶ 朗读';
+            speakBtn.classList.remove('primary');
+            speakBtn.classList.add('success');
+            if (speechTimer) {
+                clearTimeout(speechTimer);
+                speechTimer = null;
+            }
+            utterance = null;
+            clearHighlight();
+            statusText.textContent = '⏹ 已停止朗读';
+        }
+
+        // --- 清空内容 ---
+        function clearAll() {
+            stopSpeaking();
+            textInput.value = '';
+            displayArea.innerHTML = '<span style="color:#adb5bd; font-size:18px;">点击「标注拼音」查看效果</span>';
+            charsArray = [];
+            statusText.textContent = '已清空';
+        }
+
+        // --- 加载示例文章 ---
+        function loadSample() {
+            const sample = `春眠不觉晓，处处闻啼鸟。夜来风雨声，花落知多少。`;
+            textInput.value = sample;
+            statusText.textContent = '已加载示例，点击「标注拼音」';
+            // 自动标注
+            annotateBtn.click();
+        }
+
+        // --- 事件绑定 ---
+        annotateBtn.addEventListener('click', async function() {
+            const text = textInput.value;
+            await annotateText(text);
+        });
+
+        speakBtn.addEventListener('click', function() {
+            startSpeaking();
+        });
+
+        stopBtn.addEventListener('click', function() {
+            stopSpeaking();
+        });
+
+        clearBtn.addEventListener('click', function() {
+            clearAll();
+        });
+
+        sampleBtn.addEventListener('click', function() {
+            loadSample();
+        });
+
+        // 快捷键：Ctrl+Enter 标注
+        textInput.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                annotateBtn.click();
+            }
+        });
+
+        // 页面加载时自动显示示例
+        window.addEventListener('load', function() {
+        	 // 强制加载语音列表
+            window.speechSynthesis.getVoices();
+            // 某些浏览器需要延迟一下才能获取完整列表
+            setTimeout(() => {
+                window.speechSynthesis.getVoices();
+            }, 100);
+            
+
+            // 默认加载示例并标注
+            setTimeout(() => {
+                loadSample();
+            }, 300);
+        });
+
+        // 当页面关闭或跳转时停止语音
+        window.addEventListener('beforeunload', function() {
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
+        });
+
+        console.log('📖 逐字拼音朗读器已加载');
+        console.log('💡 输入中文，点击「标注拼音」，然后点击「朗读」即可逐字高亮朗读。');
+
+    })();
+</script>
+</body>
+</html>
